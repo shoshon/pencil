@@ -21,6 +21,7 @@ GNU General Public License for more details.
 #include "object.h"
 #include "mainwindow.h"
 #include "layersound.h"
+#include "editor.h"
 
 #define MIN(a,b) ((a)>(b)?(b):(a))
 
