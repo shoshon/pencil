@@ -21,7 +21,7 @@ INCLUDEPATH += . 	src \
             src/tool \
             src/util \
             src/ui
-
+            
 # Input
 HEADERS +=  src/interfaces.h \
             src/graphics/bitmap/bitmapimage.h \
@@ -49,6 +49,7 @@ HEADERS +=  src/interfaces.h \
             src/interface/spinslider.h \
             src/interface/displayoptiondockwidget.h \
             src/interface/tooloptiondockwidget.h \
+            src/interface/fileformat.h \
             src/tool/basetool.h \
             src/tool/pentool.h \
             src/tool/penciltool.h \
@@ -91,6 +92,7 @@ SOURCES +=  src/graphics/bitmap/blur.cpp \
             src/interface/timeline.cpp \
             src/interface/timecontrols.cpp \
             src/interface/toolset.cpp \
+            src/interface/fileformat.cpp \
             src/main.cpp \
             src/interface/backupelement.cpp \
             src/interface/spinslider.cpp \
@@ -131,9 +133,9 @@ macx {
     RC_FILE = pencil.icns
 }
 linux-g++ {
-    INCLUDEPATH += . liblinux
+    INCLUDEPATH += . liblinux /include
     SOURCES += src/external/linux/linux.cpp
-    LIBS += -Lliblinux -lming -lpng
+    LIBS += -Lliblinux -lming -lpng -lquazip -lz
 }
 RESOURCES += pencil.qrc
 QT += xml \

@@ -19,6 +19,8 @@ GNU General Public License for more details.
 #include <QTimer>
 #include <QSvgGenerator>
 
+#include <quazip/JlCompress.h>		//compress and decompress Pencil File Format
+
 #include "editor.h"
 #include "layerbitmap.h"
 #include "layervector.h"
@@ -27,6 +29,7 @@ GNU General Public License for more details.
 #include "mainwindow2.h"
 #include "displayoptiondockwidget.h"
 #include "tooloptiondockwidget.h"
+#include "fileformat.h"
 
 #define MIN(a,b) ((a)>(b)?(b):(a))
 
@@ -891,13 +894,35 @@ void Editor::updateObject()
 
 bool Editor::openObject(QString filePath)
 {
+    // ---- now decompress PFF -----
+	QFileInfo fileInfo(filePath);
+	QString tmpFilePath = QDir::tempPath() + "/" + fileInfo.completeBaseName() + PFF_TMP_DECOMPRESS_EXT;
+	QDir dir(QDir::tempPath()); // --
+	if(fileInfo.exists()) {
+		dir.rmpath(tmpFilePath); // --removes an old decompression directory
+	}
+	dir.mkpath(tmpFilePath); // --creates a new decompression directory
+
+   	JlCompress::extractDir(filePath, tmpFilePath);
+
     // ---- test before opening ----
-    QFile* file = new QFile(filePath);
+    QFile* file = new QFile(tmpFilePath + "/" + PFF_XML_FILE_NAME);
     if (!file->open(QFile::ReadOnly)) return false;
+
     QDomDocument doc;
-    if (!doc.setContent(file)) return false; // this is not a XML file
+    if (!doc.setContent(file))
+    {
+		dir.rmpath(tmpFilePath); // --removes temporary decompression directory
+		removePFFTmpDirectory(tmpFilePath); // --removing temporary files - better aproach
+		return false; // this is not a XML file
+	}
     QDomDocumentType type = doc.doctype();
-    if (type.name() != "PencilDocument" && type.name() != "MyObject") return false; // this is not a Pencil document
+    if (type.name() != "PencilDocument" && type.name() != "MyObject")
+    {
+		dir.rmpath(tmpFilePath); // --removes temporary decompression directory
+		removePFFTmpDirectory(tmpFilePath); // --removing temporary files - better aproach
+		return false; // this is not a Pencil document
+	}
     // -----------------------------
 
     QProgressDialog progress("Opening document...", "Abort", 0, 100, mainWindow);
@@ -909,8 +934,9 @@ bool Editor::openObject(QString filePath)
     settings.setValue("lastFilePath", QVariant(object->strCurrentFilePath) );
     mainWindow->setWindowTitle(object->strCurrentFilePath);
 
+	QString dataLayersDir = tmpFilePath + "/" + PFF_LAYERS_DIR;
     Object* newObject = new Object();
-    if (!newObject->loadPalette(object->strCurrentFilePath+".data")) newObject->loadDefaultPalette();
+    if (!newObject->loadPalette(dataLayersDir)) newObject->loadDefaultPalette();
     setObject(newObject);
 
     // ------- reads the XML file -------
@@ -930,12 +956,12 @@ bool Editor::openObject(QString filePath)
                 progress.setValue(prog);
                 if (element.tagName() == "editor")
                 {
-                    loadDomElement(element, filePath);
+                    loadDomElement(element, dataLayersDir);
                 }
                 if (element.tagName() == "object")
                 {
-                    ok = newObject->loadDomElement(element, filePath);
-                    qDebug() << "filePath:" << filePath;
+                    ok = newObject->loadDomElement(element, tmpFilePath);
+                    qDebug() << "filePath:" << tmpFilePath;
                 }
             }
             tag = tag.nextSibling();
@@ -945,11 +971,16 @@ bool Editor::openObject(QString filePath)
     {
         if (docElem.tagName() == "object" || docElem.tagName() == "MyOject")   // old Pencil format (<=0.4.3)
         {
-            ok = newObject->loadDomElement(docElem, filePath);
+            ok = newObject->loadDomElement(docElem, filePath); // I don't know if it works,
+            //may it should rather looks like that:
+            //ok = newObject->loadDomElement(docElem, dataLayersDir); 
         }
     }
     // ------------------------------
     if (ok) updateObject();
+    
+	dir.rmpath(tmpFilePath); // --removes temporary decompression directory
+	removePFFTmpDirectory(tmpFilePath); // --removes temporary decompression directory - better aproach
 
     progress.setValue(100);
     return ok;

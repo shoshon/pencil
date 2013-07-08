@@ -14,6 +14,7 @@ GNU General Public License for more details.
 
 */
 #include "layervector.h"
+#include "fileformat.h"
 #include <QtDebug>
 
 LayerVector::LayerVector(Object* object) : LayerImage(object)
@@ -306,7 +307,8 @@ void LayerVector::loadDomElement(QDomElement element, QString filePath)
             {
                 if (!imageElement.attribute("src").isNull())
                 {
-                    QString path =  filePath +".data/" + imageElement.attribute("src"); // the file is supposed to be in the data irectory
+					qDebug() << "LAYERVECTOR: filePath:" << filePath;  //debug information added by #shoshon#
+                    QString path =  filePath + "/" + PFF_LAYERS_DIR + "/" + imageElement.attribute("src"); // the file is supposed to be in the data irectory
                     QFileInfo fi(path);
                     if (!fi.exists()) path = imageElement.attribute("src");
                     int position = imageElement.attribute("frame").toInt();
